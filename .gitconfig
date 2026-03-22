@@ -1,0 +1,32 @@
+[user]
+name = ricardofalc 
+email = ricardo@falchi.dev
+
+[alias]
+    skip-commit-hook = -c core.hooksPath=/dev/null commit -m
+    st = status
+    co = checkout
+    br = branch
+    ci = commit
+    lg = log --oneline --graph --decorate
+    last = log -1 HEAD
+    df = diff
+    create-feature = "!f() { git fetch && git checkout -b \"feature/${1}\" --no-track origin/develop; }; f"
+    change-branch-name = "!f() { \
+        old=\"$1\"; \
+        new=\"$2\"; \
+        git checkout \"$old\" 2>/dev/null || git fetch origin \"$old\" && git checkout \"$old\"; \
+        git branch -m \"$new\"; \
+        git push origin \"$new\"; \
+        git push origin --delete \"$old\"; \
+        git push --set-upstream origin \"$new\"; \
+    }; f"
+[core]
+	hooksPath = /home/epictetus/.git_hooks/
+[push]
+	autoSetupRemote = true
+	autoSetupRemote = true
+[color]
+    ui = auto
+[pager]
+    log = true

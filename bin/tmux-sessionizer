@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+if [[ $# -eq 1 ]]; then
+    selected=$1
+else
+    # Searches .git folder (2 deep)
+    # Finds ~/git/REPO
+    selected=$(find ~/git -mindepth 1 -maxdepth 1 -type d | fzf)
+fi
+
+if [[ -z $selected ]]; then
+    exit 0
+fi
+
+window_name=$(basename "$selected" | tr . _)
+
+if [[ -n $TMUX ]]; then
+    tmux new-window -n "$window_name" -c "$selected"
+else
+    tmux new-session -A -s "$window_name" -c "$selected"
+fi
