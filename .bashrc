@@ -76,3 +76,9 @@ alias gd='git diff'
 
 
 export PATH="$HOME/.local/bin:$PATH"
+
+# Colored ls output
+if command -v dircolors >/dev/null 2>&1; then
+  eval "$(dircolors -b)"
+fi
+alias ls='ls --color=auto'
