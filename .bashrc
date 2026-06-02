@@ -43,6 +43,7 @@ syncconfig() {
 
 # Aliasses and functions
 alias c='clear'
+alias pls='sudo !!'
 alias h='history'
 alias la='ls -AlL'
 alias ..='cd ..'
