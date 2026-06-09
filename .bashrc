@@ -16,7 +16,8 @@ parse_git_branch() {
 # Grey/Slate: 37 -> 38;5;246
 
 export PS1="\[\e[34m\]\u\[\e[m\]\[\e[38;5;246m\]@\[\e[m\]\[\e[38;5;109m\]\h\[\e[m\]\[\e[38;5;239m\] \t \[\e[m\]\[\e[38;5;143m\]\w\[\e[m\] \[\e[1;36m\]\$(parse_git_branch)\[\e[00m\]\n$ "
-
+export EDITOR=vim
+export VISUAL=vim
 
 # Sync configuration/dot files
 syncconfig() {
