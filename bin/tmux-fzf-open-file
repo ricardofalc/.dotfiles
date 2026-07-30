@@ -16,7 +16,9 @@ list_files() {
   fi
 }
 
+set +e
 selected="$(
+  set +o pipefail
   list_files | fzf \
     --prompt='Open file> ' \
     --layout=reverse \
@@ -24,8 +26,10 @@ selected="$(
     --preview='sed -n "1,160p" {} 2>/dev/null' \
     --preview-window='right:60%:wrap'
 )"
+fzf_status=$?
+set -e
 
-if [[ -z "$selected" ]]; then
+if [[ $fzf_status -ne 0 || -z "$selected" ]]; then
   exit 0
 fi
 

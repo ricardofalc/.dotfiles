@@ -27,6 +27,7 @@ syncconfig() {
     ~/.gitconfig
     ~/.pshellrc
     ~/.tmux.conf
+    ~/.tmux.d
     ~/.vimrc
     ~/.git_hooks
     ~/.vdi-config-files
