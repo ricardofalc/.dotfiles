@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+self="$(readlink -f "$0" 2>/dev/null || printf '%s\n' "$0")"
+
+find_real_bat() {
+  local name dir candidate real_candidate
+
+  for name in batcat bat; do
+    IFS=: read -ra path_dirs <<< "$PATH"
+    for dir in "${path_dirs[@]}"; do
+      candidate="$dir/$name"
+
+      if [[ ! -x "$candidate" ]]; then
+        continue
+      fi
+
+      real_candidate="$(readlink -f "$candidate" 2>/dev/null || printf '%s\n' "$candidate")"
+
+      if [[ "$real_candidate" == "$self" ]]; then
+        continue
+      fi
+
+      printf '%s\n' "$candidate"
+      return 0
+    done
+  done
+
+  return 1
+}
+
+fallback_preview() {
+  local line_range="" highlight_line="" file="" arg start="" end=""
+
+  while [[ $# -gt 0 ]]; do
+    arg="$1"
+    shift
+
+    case "$arg" in
+      --line-range)
+        line_range="${1:-}"
+        shift || true
+        ;;
+      --line-range=*)
+        line_range="${arg#--line-range=}"
+        ;;
+      --highlight-line)
+        highlight_line="${1:-}"
+        shift || true
+        ;;
+      --highlight-line=*)
+        highlight_line="${arg#--highlight-line=}"
+        ;;
+      --)
+        file="${1:-}"
+        break
+        ;;
+      --*)
+        ;;
+      *)
+        file="$arg"
+        ;;
+    esac
+  done
+
+  if [[ -z "$file" ]]; then
+    exit 0
+  fi
+
+  if [[ "$line_range" =~ ^([0-9]*):([0-9]*)$ ]]; then
+    start="${BASH_REMATCH[1]}"
+    end="${BASH_REMATCH[2]}"
+  fi
+
+  start="${start:-1}"
+  end="${end:-999999}"
+
+  awk -v start="$start" -v end="$end" -v target="$highlight_line" '
+    NR < start { next }
+    NR > end { exit }
+    target != "" && NR == target {
+      printf "\033[48;5;60m\033[38;5;231m>%6d %s\033[0m\n", NR, $0
+      next
+    }
+    { printf " %6d %s\n", NR, $0 }
+  ' "$file" 2>/dev/null
+}
+
+if real_bat="$(find_real_bat)"; then
+  exec "$real_bat" "$@"
+fi
+
+fallback_preview "$@"

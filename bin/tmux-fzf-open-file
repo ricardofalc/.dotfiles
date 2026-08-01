@@ -1,12 +1,99 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+mode="${1:-files}"
 target_pane="${TMUX_FZF_TARGET_PANE:-}"
+preview_script="$HOME/.local/bin/tmux-fzf-open-file"
+
+bat_command() {
+  if command -v bat >/dev/null 2>&1; then
+    printf 'bat'
+  elif command -v batcat >/dev/null 2>&1; then
+    printf 'batcat'
+  else
+    return 1
+  fi
+}
+
+preview_file() {
+  local file="${1:-}"
+  local bat_cmd
+
+  if [[ -z "$file" ]]; then
+    exit 0
+  fi
+
+  if bat_cmd="$(bat_command)"; then
+    "$bat_cmd" --color=always --style=numbers --line-range=:160 -- "$file" 2>/dev/null
+  else
+    sed -n '1,160p' -- "$file" 2>/dev/null
+  fi
+}
+
+preview_match() {
+  local file="${1:-}"
+  local line="${2:-}"
+  local start end bat_cmd
+
+  if [[ -z "$file" ]]; then
+    exit 0
+  fi
+
+  if [[ ! "$line" =~ ^[0-9]+$ ]]; then
+    preview_file "$file"
+    exit 0
+  fi
+
+  start=$((line > 8 ? line - 8 : 1))
+  end=$((line + 80))
+
+  if bat_cmd="$(bat_command)"; then
+    "$bat_cmd" --color=always --style=numbers --highlight-line "$line" --line-range "$start:$end" -- "$file" 2>/dev/null
+  else
+    awk -v start="$start" -v end="$end" -v target="$line" '
+      NR < start { next }
+      NR > end { exit }
+      NR == target {
+        printf "\033[48;5;60m\033[38;5;231m>%6d %s\033[0m\n", NR, $0
+        next
+      }
+      { printf " %6d %s\n", NR, $0 }
+    ' "$file" 2>/dev/null
+  fi
+}
+
+case "$mode" in
+  --preview-file)
+    preview_file "${2:-}"
+    exit 0
+    ;;
+  --preview-match)
+    preview_match "${2:-}" "${3:-}"
+    exit 0
+    ;;
+esac
 
 if [[ -z "$target_pane" ]]; then
   tmux display-message "fzf open-file: missing target pane"
   exit 1
 fi
+
+open_in_vim() {
+  local file="$1"
+  local line="${2:-}"
+
+  if absolute_path="$(realpath -- "$file" 2>/dev/null)"; then
+    file="$absolute_path"
+  fi
+
+  printf -v quoted_file '%q' "$file"
+
+  if [[ "$line" =~ ^[0-9]+$ ]]; then
+    tmux send-keys -t "$target_pane" "vim +$line -- $quoted_file" C-m
+  else
+    tmux send-keys -t "$target_pane" "vim -- $quoted_file" C-m
+  fi
+}
 
 list_files() {
   if command -v rg >/dev/null 2>&1; then
@@ -16,26 +103,74 @@ list_files() {
   fi
 }
 
-set +e
-selected="$(
-  set +o pipefail
-  list_files | fzf \
-    --prompt='Open file> ' \
-    --layout=reverse \
-    --border=none \
-    --preview='sed -n "1,160p" {} 2>/dev/null' \
-    --preview-window='right:60%:wrap'
-)"
-fzf_status=$?
-set -e
+pick_file() {
+  set +e
+  selected="$(
+    set +o pipefail
+    list_files | fzf \
+      --prompt='Open file> ' \
+      --layout=reverse \
+      --border=none \
+      --preview="$preview_script --preview-file {}" \
+      --preview-window='right:60%:wrap'
+  )"
+  fzf_status=$?
+  set -e
 
-if [[ $fzf_status -ne 0 || -z "$selected" ]]; then
-  exit 0
-fi
+  if [[ $fzf_status -ne 0 || -z "$selected" ]]; then
+    exit 0
+  fi
 
-if absolute_path="$(realpath -- "$selected" 2>/dev/null)"; then
-  selected="$absolute_path"
-fi
+  open_in_vim "$selected"
+}
 
-printf -v quoted_file '%q' "$selected"
-tmux send-keys -t "$target_pane" "vim -- $quoted_file" C-m
+search_content() {
+  if ! command -v rg >/dev/null 2>&1; then
+    printf '%s\n' \
+      'ripgrep (rg) is required for Ctrl-a Shift-o content search.' \
+      '' \
+      'Install it with one of:' \
+      '  sudo dnf install ripgrep' \
+      '  sudo yum install ripgrep' \
+      '  sudo apt install ripgrep' \
+      '' \
+      'Press Enter to close.'
+    read -r _ || true
+    exit 1
+  fi
+
+  set +e
+  selected="$(
+    fzf \
+      --disabled \
+      --prompt='Search text> ' \
+      --layout=reverse \
+      --border=none \
+      --delimiter=':' \
+      --bind "change:reload:rg --column --line-number --no-heading --color=never --smart-case --hidden --glob '!.git/*' {q} || true" \
+      --preview="$preview_script --preview-match {1} {2}" \
+      --preview-window='right:60%:wrap'
+  )"
+  fzf_status=$?
+  set -e
+
+  if [[ $fzf_status -ne 0 || -z "$selected" ]]; then
+    exit 0
+  fi
+
+  IFS=: read -r selected_file selected_line _ <<< "$selected"
+  open_in_vim "$selected_file" "$selected_line"
+}
+
+case "$mode" in
+  files)
+    pick_file
+    ;;
+  --content)
+    search_content
+    ;;
+  *)
+    tmux display-message "fzf open-file: unknown mode $mode"
+    exit 1
+    ;;
+esac
