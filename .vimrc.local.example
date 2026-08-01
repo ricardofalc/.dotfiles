@@ -1,0 +1,5 @@
+" Copy this file to ~/.vimrc.local on a machine where you want different
+" Vim behavior. Do not commit the real ~/.vimrc.local.
+"
+" Example:
+" set colorcolumn=100

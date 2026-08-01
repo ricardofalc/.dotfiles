@@ -1,0 +1,6 @@
+# Copy this file to ~/.bashrc.local on a machine where you want different
+# shell behavior. Do not commit the real ~/.bashrc.local.
+#
+# Example:
+# export WORK_REPO="$HOME/git/work"
+# alias cwork='cd "$WORK_REPO"'
