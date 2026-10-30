@@ -1,0 +1,17 @@
+# Portable extension set: install this same list on work and private machines.
+# Keep this file limited to tools that are useful across both environments.
+vscodevim.vim
+mechatroner.rainbow-csv
+iuriibarlukov.cursor-column-highlight
+redhat.vscode-yaml
+redhat.ansible
+opentofu.vscode-opentofu
+sztheory.vscode-packer-powertools
+ms-kubernetes-tools.vscode-kubernetes-tools
+helm-ls.helm-ls
+ms-python.python
+ms-python.vscode-pylance
+timonwong.shellcheck
+ms-azuretools.vscode-docker
+ms-vscode-remote.remote-ssh
+tamasfe.even-better-toml

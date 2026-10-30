@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v python3 >/dev/null 2>&1; then
+  printf 'python3 is required for ansible-lint.\n' >&2
+  exit 1
+fi
+
+install_ansible_tools() {
+  local venv_dir="${XDG_DATA_HOME:-$HOME/.local/share}/venvs/ansible-lint"
+  local bin_dir="$HOME/.local/bin"
+
+  python3 -m venv "$venv_dir"
+  "$venv_dir/bin/python" -m pip install --upgrade pip ansible-lint
+  mkdir -p "$bin_dir"
+
+  for tool in ansible ansible-playbook ansible-galaxy ansible-vault ansible-inventory ansible-lint; do
+    ln -sfn "$venv_dir/bin/$tool" "$bin_dir/$tool"
+  done
+}
+
+case "$(uname -s)" in
+  Darwin)
+    if ! command -v brew >/dev/null 2>&1; then
+      printf 'Homebrew is required on macOS: https://brew.sh/\n' >&2
+      exit 1
+    fi
+    brew install shellcheck helm kubernetes-cli opentofu packer fluxcd/tap/flux
+    ;;
+  Linux)
+    if ! command -v dnf >/dev/null 2>&1; then
+      printf 'This Linux installer currently supports Fedora/dnf only.\n' >&2
+      exit 1
+    fi
+
+    sudo dnf install -y ShellCheck helm kubernetes-client opentofu
+
+    if ! command -v flux >/dev/null 2>&1; then
+      curl -fsSL https://fluxcd.io/install.sh | sudo bash
+    fi
+    if ! command -v packer >/dev/null 2>&1; then
+      sudo dnf config-manager --add-repo \
+        https://rpm.releases.hashicorp.com/fedora/hashicorp.repo
+      sudo dnf install -y packer
+    fi
+    ;;
+  *)
+    printf 'Unsupported operating system: %s\n' "$(uname -s)" >&2
+    exit 1
+    ;;
+esac
+
+install_ansible_tools
+
+printf '\nInstalled DevOps tools:\n'
+for tool in shellcheck helm kubectl tofu packer flux ansible-lint ansible-playbook; do
+  if command -v "$tool" >/dev/null 2>&1; then
+    printf '  %-18s %s\n' "$tool" "$(command -v "$tool")"
+  else
+    printf '  %-18s MISSING\n' "$tool"
+  fi
+done
