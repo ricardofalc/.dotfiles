@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dotfiles_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+source_dir="$dotfiles_root/.config/Code/User"
+
+case "$(uname -s)" in
+  Darwin)
+    user_dir="$HOME/Library/Application Support/Code/User"
+    ;;
+  MINGW*|MSYS*|CYGWIN*)
+    : "${APPDATA:?APPDATA must be set on Windows shells}"
+    user_dir="$APPDATA/Code/User"
+    ;;
+  *)
+    user_dir="${XDG_CONFIG_HOME:-$HOME/.config}/Code/User"
+    ;;
+esac
+
+mkdir -p "$user_dir"
+
+for file in settings.json keybindings.json; do
+  source_file="$source_dir/$file"
+  target_file="$user_dir/$file"
+
+  if [ -L "$target_file" ] && [ "$(readlink -- "$target_file")" = "$source_file" ]; then
+    continue
+  fi
+
+  if [ -e "$target_file" ] || [ -L "$target_file" ]; then
+    backup="$target_file.backup.$(date +%Y%m%d%H%M%S)"
+    mv -- "$target_file" "$backup"
+    printf 'Backed up %s to %s\n' "$target_file" "$backup"
+  fi
+
+  ln -s -- "$source_file" "$target_file"
+  printf 'Linked %s\n' "$target_file"
+done
+
+if command -v code >/dev/null 2>&1; then
+  while IFS= read -r extension || [ -n "$extension" ]; do
+    case "$extension" in
+      ''|'#'*) continue ;;
+    esac
+    code --install-extension "$extension" --force
+  done < "$source_dir/extensions.txt"
+else
+  printf 'Warning: code CLI not found; install extensions from %s manually.\n' \
+    "$source_dir/extensions.txt" >&2
+fi
