@@ -68,6 +68,7 @@
         "editor.insertSpaces": false
     },
     "vim.useCtrlKeys": true,
+    "vim.useSystemClipboard": true,
     "vim.cursorStylePerMode.normal": "block",
     "vim.cursorStylePerMode.insert": "line",
     "vim.cursorStylePerMode.replace": "underline",
