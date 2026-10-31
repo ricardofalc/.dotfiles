@@ -13,5 +13,25 @@
         "key": "ctrl+shift+up",
         "command": "editor.action.insertCursorAbove",
         "when": "editorTextFocus"
+    },
+    {
+        "key": "ctrl+up",
+        "command": "extension.vim_ctrl+up",
+        "when": "editorTextFocus && vim.active && vim.mode != 'Insert' && !inDebugRepl"
+    },
+    {
+        "key": "ctrl+down",
+        "command": "extension.vim_ctrl+down",
+        "when": "editorTextFocus && vim.active && vim.mode != 'Insert' && !inDebugRepl"
+    },
+    {
+        "key": "pageup",
+        "command": "extension.vim_ctrl+b",
+        "when": "editorTextFocus && vim.active && vim.mode != 'Insert' && !inDebugRepl"
+    },
+    {
+        "key": "pagedown",
+        "command": "extension.vim_ctrl+f",
+        "when": "editorTextFocus && vim.active && vim.mode != 'Insert' && !inDebugRepl"
     }
 ]
