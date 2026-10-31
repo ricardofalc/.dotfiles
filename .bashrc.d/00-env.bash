@@ -1,5 +1,6 @@
 export EDITOR=vim
 export VISUAL=vim
+export SYSTEMD_EDITOR=/usr/bin/vim
 export PATH="$HOME/.local/bin:$PATH"
 
 # Colored ls output.
