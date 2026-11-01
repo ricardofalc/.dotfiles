@@ -97,5 +97,6 @@
         "<C-b>": false,
         "<C-k>": false
     },
-    "chat.agent.thinking.collapsedTools": "off"
+    "chat.agent.thinking.collapsedTools": "off",
+    "gitlens.graph.details.location": "auto"
 }

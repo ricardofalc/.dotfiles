@@ -4,7 +4,9 @@ vscodevim.vim
 mechatroner.rainbow-csv
 iuriibarlukov.cursor-column-highlight
 redhat.vscode-yaml
+redhat.vscode-xml
 redhat.ansible
+eamodio.gitlens
 opentofu.vscode-opentofu
 sztheory.vscode-packer-powertools
 ms-kubernetes-tools.vscode-kubernetes-tools
