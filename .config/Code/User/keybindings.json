@@ -16,12 +16,12 @@
     },
     {
         "key": "ctrl+up",
-        "command": "extension.vim_ctrl+up",
+        "command": "scrollLineUp",
         "when": "editorTextFocus && vim.active && vim.mode != 'Insert' && !inDebugRepl"
     },
     {
         "key": "ctrl+down",
-        "command": "extension.vim_ctrl+down",
+        "command": "scrollLineDown",
         "when": "editorTextFocus && vim.active && vim.mode != 'Insert' && !inDebugRepl"
     },
     {

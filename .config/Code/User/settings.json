@@ -67,7 +67,7 @@
         "editor.tabSize": 8,
         "editor.insertSpaces": false
     },
-    "vim.useCtrlKeys": true,
+    "vim.useCtrlKeys": false,
     "vim.useSystemClipboard": true,
     "vim.cursorStylePerMode.normal": "block",
     "vim.cursorStylePerMode.insert": "line",
