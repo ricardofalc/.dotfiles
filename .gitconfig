@@ -22,7 +22,7 @@ email = ricardo@falchi.dev
         git push --set-upstream origin \"$new\"; \
     }; f"
 [core]
-	hooksPath = /home/epictetus/.git_hooks/
+	hooksPath = ~/.git_hooks/
 [push]
 	autoSetupRemote = true
 	autoSetupRemote = true

@@ -32,4 +32,10 @@ syncconfig() {
     rsync -av --exclude="*.pem" "$expanded_file" "$dest"
     echo "$expanded_file synced to $(basename "$dest")"
   done
+
+  if [ -d "$HOME/.config/ghostty" ]; then
+    mkdir -p "$dest/.config/ghostty"
+    rsync -av --exclude="*.pem" "$HOME/.config/ghostty/" "$dest/.config/ghostty/"
+    echo "$HOME/.config/ghostty synced to $dest/.config/ghostty"
+  fi
 }
