@@ -3,7 +3,9 @@
 if [[ $# -eq 1 ]]; then
     selected=$1
 else
-    selected=$(find ~/git -mindepth 1 -maxdepth 1 -type d | fzf \
+    # Show Git repository roots at any depth, without descending into repos.
+    selected=$(find "$HOME/git" -type d -name .git -prune -print 2>/dev/null \
+        | sed 's#/.git$##' | sort | fzf \
         --color='bg:#151820,bg+:#3b4252,fg:#d8dee9,fg+:#eceff4,pointer:#88c0d0,marker:#a3be8c,prompt:#88c0d0,info:#81a1c1,header:#81a1c1,border:#4c566a')
 fi
 
