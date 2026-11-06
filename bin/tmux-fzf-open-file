@@ -25,7 +25,7 @@ preview_file() {
   fi
 
   if bat_cmd="$(bat_command)"; then
-    "$bat_cmd" --color=always --style=numbers --line-range=:160 -- "$file" 2>/dev/null
+    "$bat_cmd" --color=always --theme='Nord' --style=numbers --line-range=:160 -- "$file" 2>/dev/null
   else
     sed -n '1,160p' -- "$file" 2>/dev/null
   fi
@@ -49,7 +49,7 @@ preview_match() {
   end=$((line + 80))
 
   if bat_cmd="$(bat_command)"; then
-    "$bat_cmd" --color=always --style=numbers --highlight-line "$line" --line-range "$start:$end" -- "$file" 2>/dev/null
+    "$bat_cmd" --color=always --theme='Nord' --style=numbers --highlight-line "$line" --line-range "$start:$end" -- "$file" 2>/dev/null
   else
     awk -v start="$start" -v end="$end" -v target="$line" '
       NR < start { next }
