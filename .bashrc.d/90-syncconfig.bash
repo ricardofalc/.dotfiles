@@ -3,6 +3,7 @@ syncconfig() {
   local files=(
     ~/.inputrc
     ~/.bashrc
+    ~/.bash_profile
     ~/.bashrc.d
     ~/.bashrc.local.example
     ~/.gitconfig

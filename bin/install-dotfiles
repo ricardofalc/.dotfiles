@@ -1,0 +1,181 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dotfiles_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+home_dir="${HOME:?HOME must be set}"
+timestamp="$(date +%Y%m%d%H%M%S)"
+dry_run=0
+skip_shell_change=0
+skip_devops_tools=0
+
+usage() {
+  cat <<'EOF'
+Usage: install-dotfiles [options]
+
+Install this repository on Fedora or macOS.
+
+Options:
+  --dry-run             Show actions without changing the system
+  --no-shell-change     Keep the current login shell on macOS
+  --skip-devops-tools   Do not run bin/install-devops-tools
+  -h, --help            Show this help
+EOF
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --dry-run) dry_run=1 ;;
+    --no-shell-change) skip_shell_change=1 ;;
+    --skip-devops-tools) skip_devops_tools=1 ;;
+    -h|--help) usage; exit 0 ;;
+    *) printf 'Unknown option: %s\n' "$1" >&2; usage >&2; exit 2 ;;
+  esac
+  shift
+done
+
+run() {
+  if [ "$dry_run" -eq 1 ]; then
+    printf '+ %s\n' "$*"
+  else
+    "$@"
+  fi
+}
+
+backup_existing() {
+  local target="$1"
+  local backup="${target}.backup.${timestamp}"
+
+  if [ -e "$target" ] || [ -L "$target" ]; then
+    run mv -- "$target" "$backup"
+    printf 'Backed up %s to %s\n' "$target" "$backup"
+  fi
+}
+
+link_entry() {
+  local relative_path="$1"
+  local source="$dotfiles_root/$relative_path"
+  local target="$home_dir/$relative_path"
+
+  if [ -L "$target" ] && [ "$(readlink -- "$target")" = "$source" ]; then
+    return
+  fi
+
+  run mkdir -p -- "$(dirname -- "$target")"
+  backup_existing "$target"
+  run ln -s -- "$source" "$target"
+  printf 'Linked %s\n' "$target"
+}
+
+install_homebrew_packages() {
+  if ! command -v brew >/dev/null 2>&1; then
+    printf 'Homebrew is required on macOS: https://brew.sh/\n' >&2
+    exit 1
+  fi
+
+  run brew install bash tmux fzf ripgrep bat vim rsync shellcheck
+  run brew install --cask ghostty
+}
+
+install_fedora_packages() {
+  if ! command -v dnf >/dev/null 2>&1; then
+    printf 'This installer supports Fedora/dnf on Linux only.\n' >&2
+    exit 1
+  fi
+
+  run sudo dnf install -y bash tmux fzf ripgrep bat vim-enhanced rsync wl-clipboard
+}
+
+configure_macos_bash() {
+  local bash_path
+  bash_path="$(brew --prefix)/bin/bash"
+
+  if [ "$dry_run" -eq 1 ]; then
+    printf '+ configure macOS login shell: %s\n' "$bash_path"
+    return
+  fi
+
+  if [ ! -x "$bash_path" ]; then
+    printf 'Homebrew Bash was not found at %s\n' "$bash_path" >&2
+    exit 1
+  fi
+
+  if [ "$skip_shell_change" -eq 1 ]; then
+    printf 'Keeping the current macOS login shell (--no-shell-change).\n'
+    return
+  fi
+
+  if ! grep -Fqx "$bash_path" /etc/shells 2>/dev/null; then
+    if [ "$dry_run" -eq 1 ]; then
+      printf '+ sudo tee -a /etc/shells <<< %s\n' "$bash_path"
+    else
+      printf '%s\n' "$bash_path" | sudo tee -a /etc/shells >/dev/null
+    fi
+  fi
+
+  if [ "${SHELL:-}" != "$bash_path" ]; then
+    run chsh -s "$bash_path"
+    printf 'Default shell changed to Homebrew Bash. Open a new terminal session.\n'
+  else
+    printf 'Homebrew Bash is already the default shell.\n'
+  fi
+}
+
+case "$(uname -s)" in
+  Darwin)
+    install_homebrew_packages
+    ;;
+  Linux)
+    if [ ! -f /etc/fedora-release ]; then
+      printf 'Linux was detected, but this installer is intended for Fedora.\n' >&2
+      exit 1
+    fi
+    install_fedora_packages
+    ;;
+  *)
+    printf 'Unsupported operating system: %s\n' "$(uname -s)" >&2
+    exit 1
+    ;;
+esac
+
+for entry in \
+  .bashrc \
+  .bash_profile \
+  .bashrc.d \
+  .gitconfig \
+  .inputrc \
+  .tmux.conf \
+  .tmux.d \
+  .vimrc \
+  .vimrc.d \
+  .config/ghostty/config.ghostty; do
+  link_entry "$entry"
+done
+
+run mkdir -p "$home_dir/.local/bin"
+for source_file in "$dotfiles_root"/bin/*; do
+  [ -f "$source_file" ] || continue
+  [ "$(basename -- "$source_file")" = "claude" ] && continue
+  target="$home_dir/.local/bin/$(basename -- "$source_file")"
+  if [ -L "$target" ] && [ "$(readlink -- "$target")" = "$source_file" ]; then
+    continue
+  fi
+  backup_existing "$target"
+  run ln -s -- "$source_file" "$target"
+  printf 'Linked %s\n' "$target"
+done
+
+if [ "$(uname -s)" = Darwin ]; then
+  configure_macos_bash
+fi
+
+if [ "$skip_devops_tools" -eq 0 ]; then
+  run "$dotfiles_root/bin/install-devops-tools"
+fi
+
+if command -v code >/dev/null 2>&1; then
+  run "$dotfiles_root/bin/install-vscode-config"
+else
+  printf 'Warning: code CLI not found; skipped VS Code settings and extensions.\n'
+fi
+
+printf '\nDotfiles installation complete. Start a new terminal session to load Bash.\n'

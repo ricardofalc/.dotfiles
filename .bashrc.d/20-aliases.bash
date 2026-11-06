@@ -3,7 +3,11 @@ alias c='clear'
 alias pls='sudo !!'
 alias h='history'
 alias la='ls -AlL'
-alias ls='ls --color=auto'
+if command ls --color=auto >/dev/null 2>&1; then
+  alias ls='ls --color=auto'
+elif command ls -G >/dev/null 2>&1; then
+  alias ls='ls -G'
+fi
 alias ..='cd ..'
 alias ...='cd ../..'
 
