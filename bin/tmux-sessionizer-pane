@@ -3,7 +3,8 @@
 if [[ $# -eq 1 ]]; then
     selected=$1
 else
-    selected=$(find ~/git -mindepth 1 -maxdepth 1 -type d | fzf)
+    selected=$(find ~/git -mindepth 1 -maxdepth 1 -type d | fzf \
+        --color='bg:#151820,bg+:#3b4252,fg:#d8dee9,fg+:#eceff4,pointer:#88c0d0,marker:#a3be8c,prompt:#88c0d0,info:#81a1c1,header:#81a1c1,border:#4c566a')
 fi
 
 if [[ -z $selected ]]; then
