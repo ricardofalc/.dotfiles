@@ -1,0 +1,31 @@
+# Deep Nord for Vicinae.
+
+[meta]
+version = 1
+name = "Deep Nord"
+description = "A darker, high-contrast Nord theme matching the terminal setup"
+variant = "dark"
+
+[colors.core]
+background = "#151820"
+foreground = "#d8dee9"
+secondary_background = "#1b1f29"
+border = "#4c566a"
+accent = "#88c0d0"
+
+[colors.accents]
+blue = "#88c0d0"
+green = "#a3be8c"
+magenta = "#b48ead"
+orange = "#d08770"
+purple = "#b48ead"
+red = "#bf616a"
+yellow = "#ebcb8b"
+cyan = "#8fbcbb"
+
+[colors.list.item.selection]
+background = "#3b4252"
+secondary_background = "#434c5e"
+
+[colors.grid.item]
+background = "#2e3440"

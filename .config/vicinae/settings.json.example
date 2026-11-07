@@ -1,0 +1,18 @@
+{
+  "$schema": "https://vicinae.com/schemas/config.json",
+  "theme": {
+    "light": {
+      "name": "deep-nord",
+      "icon_theme": "auto"
+    },
+    "dark": {
+      "name": "deep-nord",
+      "icon_theme": "auto"
+    }
+  },
+  "favorites": [
+    "wm:switch-windows"
+  ],
+  "pop_to_root_on_close": true,
+  "close_on_focus_loss": true
+}

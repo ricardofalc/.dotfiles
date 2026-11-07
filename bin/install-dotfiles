@@ -7,6 +7,7 @@ timestamp="$(date +%Y%m%d%H%M%S)"
 dry_run=0
 skip_shell_change=0
 skip_devops_tools=0
+enable_vicinae_gnome_shortcut=0
 
 usage() {
   cat <<'EOF'
@@ -18,6 +19,8 @@ Options:
   --dry-run             Show actions without changing the system
   --no-shell-change     Keep the current login shell on macOS
   --skip-devops-tools   Do not run bin/install-devops-tools
+  --enable-vicinae-gnome-shortcut
+                        Opt in to the experimental GNOME Vicinae shortcut
   -h, --help            Show this help
 EOF
 }
@@ -27,6 +30,7 @@ while [ "$#" -gt 0 ]; do
     --dry-run) dry_run=1 ;;
     --no-shell-change) skip_shell_change=1 ;;
     --skip-devops-tools) skip_devops_tools=1 ;;
+    --enable-vicinae-gnome-shortcut) enable_vicinae_gnome_shortcut=1 ;;
     -h|--help) usage; exit 0 ;;
     *) printf 'Unknown option: %s\n' "$1" >&2; usage >&2; exit 2 ;;
   esac
@@ -82,7 +86,65 @@ install_fedora_packages() {
     exit 1
   fi
 
-  run sudo dnf install -y bash tmux fzf ripgrep bat vim-enhanced rsync wl-clipboard
+  run sudo dnf install -y bash tmux fzf ripgrep bat vim-enhanced rsync wl-clipboard dnf-plugins-core
+  run sudo dnf copr enable -y quadratech188/vicinae
+  run sudo dnf install -y vicinae
+}
+
+install_vicinae_config() {
+  local vicinae_dir="$home_dir/.config/vicinae"
+  local settings_file="$vicinae_dir/settings.json"
+  local settings_example="$dotfiles_root/.config/vicinae/settings.json.example"
+
+  run mkdir -p "$vicinae_dir/themes"
+  link_entry .config/vicinae/themes/deep-nord.toml
+
+  if [ ! -e "$settings_file" ] && [ ! -L "$settings_file" ]; then
+    run cp -- "$settings_example" "$settings_file"
+    run chmod 600 "$settings_file"
+    printf 'Created writable Vicinae settings at %s\n' "$settings_file"
+  else
+    printf 'Preserved existing Vicinae settings at %s\n' "$settings_file"
+  fi
+
+}
+
+configure_gnome_vicinae_shortcut() {
+  local keybindings_schema="org.gnome.settings-daemon.plugins.media-keys"
+  local keybindings_key="custom-keybindings"
+  local keybinding_path="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vicinae/"
+  local custom_keybinding_schema="org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:${keybinding_path}"
+  local current_keybindings updated_keybindings
+
+  if ! command -v gsettings >/dev/null 2>&1; then
+    printf 'Warning: gsettings not found; configure Alt+Space manually for Vicinae.\n' >&2
+    return
+  fi
+
+  if [ "$dry_run" -eq 1 ]; then
+    printf '+ disable GNOME window menu Alt+Space\n'
+    printf '+ configure GNOME Alt+Space -> vicinae toggle\n'
+    return
+  fi
+
+  # GNOME reserves Alt+Space for the window menu. Release that binding so the
+  # Vicinae custom shortcut can receive it instead.
+  gsettings set org.gnome.desktop.wm.keybindings activate-window-menu "[]"
+
+  current_keybindings="$(gsettings get "$keybindings_schema" "$keybindings_key")"
+  if [[ "$current_keybindings" != *"$keybinding_path"* ]]; then
+    if [ "$current_keybindings" = "@as []" ]; then
+      updated_keybindings="['$keybinding_path']"
+    else
+      updated_keybindings="${current_keybindings%]}, '$keybinding_path']"
+    fi
+    gsettings set "$keybindings_schema" "$keybindings_key" "$updated_keybindings"
+  fi
+
+  gsettings set "$custom_keybinding_schema" name 'Vicinae'
+  gsettings set "$custom_keybinding_schema" command 'vicinae toggle'
+  gsettings set "$custom_keybinding_schema" binding '<Alt>space'
+  printf 'Configured GNOME Alt+Space for Vicinae.\n'
 }
 
 configure_macos_bash() {
@@ -147,7 +209,8 @@ for entry in \
   .tmux.d \
   .vimrc \
   .vimrc.d \
-  .config/ghostty/config.ghostty; do
+  .config/ghostty/config.ghostty \
+  .config/vicinae/themes/deep-nord.toml; do
   link_entry "$entry"
 done
 
@@ -166,6 +229,14 @@ done
 
 if [ "$(uname -s)" = Darwin ]; then
   configure_macos_bash
+else
+  install_vicinae_config
+  if [ "$enable_vicinae_gnome_shortcut" -eq 1 ]; then
+    configure_gnome_vicinae_shortcut
+    run systemctl --user enable --now vicinae.service
+  else
+    printf 'Vicinae installed without GNOME autostart/shortcut; start it manually with: systemctl --user start vicinae.service\n'
+  fi
 fi
 
 if [ "$skip_devops_tools" -eq 0 ]; then
