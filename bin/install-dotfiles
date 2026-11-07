@@ -86,9 +86,62 @@ install_fedora_packages() {
     exit 1
   fi
 
-  run sudo dnf install -y bash tmux fzf ripgrep bat vim-enhanced rsync wl-clipboard dnf-plugins-core
+  run sudo dnf install -y bash tmux fzf ripgrep bat vim-enhanced rsync wl-clipboard curl dnf-plugins-core
   run sudo dnf copr enable -y quadratech188/vicinae
   run sudo dnf install -y vicinae
+}
+
+install_vicinae_gnome_extension() {
+  local desktop_session="${XDG_CURRENT_DESKTOP:-} ${XDG_SESSION_DESKTOP:-} ${DESKTOP_SESSION:-}"
+  local extension_uuid="vicinae@dagimg-dot"
+  local api_url="https://api.github.com/repos/vicinaehq/gnome-extension/releases/latest"
+  local download_url temp_dir extension_zip
+
+  if [[ "$desktop_session" != *GNOME* ]] || ! command -v gnome-extensions >/dev/null 2>&1; then
+    printf 'GNOME not detected; skipped Vicinae GNOME extension.\n'
+    return
+  fi
+
+  if ! command -v curl >/dev/null 2>&1; then
+    printf 'Warning: curl not found; skipped Vicinae GNOME extension.\n' >&2
+    return
+  fi
+
+  if [ "$dry_run" -eq 1 ]; then
+    printf '+ download the latest Vicinae GNOME extension\n'
+    printf '+ gnome-extensions install --force <vicinae-extension>.shell-extension.zip\n'
+    printf '+ gnome-extensions enable %s\n' "$extension_uuid"
+    return
+  fi
+
+  if gnome-extensions list | grep -Fqx "$extension_uuid"; then
+    gnome-extensions enable "$extension_uuid"
+    printf 'Vicinae GNOME extension is already installed and enabled.\n'
+    return
+  fi
+
+  if ! download_url="$(curl --fail --silent --show-error "$api_url" \
+    | sed -n 's/.*"browser_download_url": "\([^"]*\.shell-extension[^\"]*\.zip\)".*/\1/p' \
+    | head -n 1)"; then
+    printf 'Warning: could not query the Vicinae GNOME extension release.\n' >&2
+    return
+  fi
+  if [ -z "$download_url" ]; then
+    printf 'Warning: could not find the Vicinae GNOME extension release asset.\n' >&2
+    return
+  fi
+
+  temp_dir="$(mktemp -d)"
+  extension_zip="$temp_dir/vicinae.shell-extension.zip"
+  trap 'rm -rf -- "$temp_dir"' RETURN
+  curl --fail --silent --show-error --location "$download_url" --output "$extension_zip"
+  gnome-extensions install --force "$extension_zip"
+  if ! gnome-extensions enable "$extension_uuid"; then
+    printf 'GNOME must be restarted before the Vicinae extension can be enabled. Log out/in, then run this installer again.\n' >&2
+  fi
+  trap - RETURN
+  rm -rf -- "$temp_dir"
+  printf 'Installed and enabled the Vicinae GNOME extension. Log out/in if GNOME does not activate it immediately.\n'
 }
 
 install_vicinae_config() {
@@ -231,6 +284,7 @@ if [ "$(uname -s)" = Darwin ]; then
   configure_macos_bash
 else
   install_vicinae_config
+  install_vicinae_gnome_extension
   if [ "$enable_vicinae_gnome_shortcut" -eq 1 ]; then
     configure_gnome_vicinae_shortcut
     run systemctl --user enable --now vicinae.service
