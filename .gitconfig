@@ -30,3 +30,6 @@ email = ricardo@falchi.dev
     ui = auto
 [pager]
     log = true
+
+[include]
+    path = ~/.gitconfig.local
