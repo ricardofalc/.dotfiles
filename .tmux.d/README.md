@@ -11,6 +11,6 @@ set -g @tmux_enable_wayland_clipboard 0
 
 Use `~/.tmux.after.conf` for overrides that must run after all modules.
 
-The status bar displays the selected Kubernetes context for the active pane.
-The shell helpers set only a pane-local label; kubeconfig paths and contents
-are not stored in tmux's environment.
+The status bar displays the selected Kubernetes context and namespace for the
+active pane. The shell helpers set only pane-local labels; kubeconfig paths
+and contents are not stored in tmux's environment.
