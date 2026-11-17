@@ -1,4 +1,6 @@
 # Aliases and functions.
+alias k='kubectl'
+alias ks='kubeconfig_select'
 alias c='clear'
 alias pls='sudo !!'
 alias h='history'
