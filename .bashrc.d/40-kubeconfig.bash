@@ -90,14 +90,3 @@ kubectl() {
 
   return "$kubectl_status"
 }
-
-k9s() {
-  if [[ -z "${KUBECONFIG:-}" ]]; then
-    __dotfiles_kubeconfig_sync_tmux
-    printf 'k9s: no kubeconfig selected; run kubeconfig_select first.\n' >&2
-    return 1
-  fi
-
-  __dotfiles_kubeconfig_sync_tmux
-  command k9s "$@"
-}
