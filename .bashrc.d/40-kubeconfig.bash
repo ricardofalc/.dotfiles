@@ -137,62 +137,103 @@ kube_namespace_clear() {
   printf 'Kubernetes namespace override cleared for this shell.\n'
 }
 
-k() {
-  # Kubectl's completion function calls the command with this internal subcommand.
-  # Config and client-local commands do not operate on a resource namespace.
-  case "${1:-}" in
-    __complete|config|completion|version)
-      kubectl "$@"
-      return $?
-      ;;
-  esac
-
-  # Detect a manually changed KUBECONFIG before applying a saved namespace.
-  __dotfiles_kubeconfig_sync_tmux
-
-  local arg
-  local explicit_namespace=0
-  for arg in "$@"; do
-    case "$arg" in
-      -n|--namespace|--namespace=*|-n?*)
-        explicit_namespace=1
-        break
+# Match explicit, nonempty targeting options before any command payload (`--`).
+__dotfiles_kube_has_option() {
+  local option="$1"
+  shift
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --) return 1 ;;
+      "$option")
+        [[ $# -gt 1 && -n "$2" && "$2" != -* ]] && return 0
+        ;;
+      "$option"=*)
+        [[ -n "${1#*=}" ]] && return 0
         ;;
     esac
+    shift
   done
+  return 1
+}
 
-  if [[ -n "${KUBE_NAMESPACE:-}" && "$explicit_namespace" -eq 0 ]]; then
-    kubectl --namespace "$KUBE_NAMESPACE" "$@"
-  else
-    kubectl "$@"
-  fi
+k() {
+  kubectl "$@"
+}
+
+__dotfiles_kube_has_namespace() {
+  local arg
+  for arg in "$@"; do
+    case "$arg" in
+      --) break ;;
+      -n|--namespace|--namespace=*|-n?*|-A|--all-namespaces|--all-namespaces=*) return 0 ;;
+    esac
+  done
+  return 1
 }
 
 kubectl() {
-  # Keep shell completion available without falling back to the default kubeconfig.
-  if [[ "${1:-}" == __complete ]]; then
-    if [[ -z "${KUBECONFIG:-}" ]]; then
-      KUBECONFIG=/dev/null command kubectl "$@"
+  # Completion must use the same target/namespace without changing pane status.
+  if [[ "${1:-}" == __complete || "${1:-}" == __completeNoDesc ]]; then
+    local completion_command="$1"
+    shift
+    if __dotfiles_kube_has_option --kubeconfig "$@"; then
+      command kubectl "$completion_command" "$@"
+    elif __dotfiles_kube_has_option --context "$@"; then
+      KUBECONFIG="$HOME/.kube/config" command kubectl "$completion_command" "$@"
+    elif [[ -z "${KUBECONFIG:-}" ]]; then
+      # Never fall back to the default kubeconfig for implicit completion.
+      KUBECONFIG=/dev/null command kubectl "$completion_command" "$@"
+    elif [[ -n "${KUBE_NAMESPACE:-}" && "${__dotfiles_last_kubeconfig:-$KUBECONFIG}" == "$KUBECONFIG" ]] \
+      && ! __dotfiles_kube_has_namespace "$@"; then
+      case "${1:-}" in
+        config|completion|version)
+          command kubectl "$completion_command" "$@" ;;
+        *)
+          command kubectl "$completion_command" --namespace "$KUBE_NAMESPACE" "$@" ;;
+      esac
     else
-      command kubectl "$@"
+      command kubectl "$completion_command" "$@"
     fi
+    return $?
+  fi
+
+  # Explicit targets apply only to this command, never to the shell selection.
+  if __dotfiles_kube_has_option --kubeconfig "$@"; then
+    command kubectl "$@"
+    return $?
+  fi
+  if __dotfiles_kube_has_option --context "$@"; then
+    KUBECONFIG="$HOME/.kube/config" command kubectl "$@"
     return $?
   fi
 
   if [[ -z "${KUBECONFIG:-}" ]]; then
     __dotfiles_kubeconfig_sync_tmux
-    printf 'kubectl: no kubeconfig selected; run kubeconfig_select first.\n' >&2
+    printf 'kubectl: select a kubeconfig or pass --context or --kubeconfig explicitly.\n' >&2
     return 1
   fi
 
   # Update before running so a manually changed KUBECONFIG is visible first.
   __dotfiles_kubeconfig_sync_tmux
+  local explicit_namespace=0
+  local namespace_command=1
+  case "${1:-}" in
+    config|completion|version) namespace_command=0 ;;
+  esac
+  if __dotfiles_kube_has_namespace "$@"; then
+    explicit_namespace=1
+  fi
+
   local kubectl_status=0
-  command kubectl "$@" || kubectl_status=$?
+  if [[ -n "${KUBE_NAMESPACE:-}" && "$explicit_namespace" -eq 0 && "$namespace_command" -eq 1 ]]; then
+    command kubectl --namespace "$KUBE_NAMESPACE" "$@" || kubectl_status=$?
+  else
+    command kubectl "$@" || kubectl_status=$?
+  fi
 
   # A config command may have changed the active context in the selected file.
   if [[ "${1:-}" == config ]]; then
-    if [[ "${2:-}" == use-context ]]; then
+    if [[ "${2:-}" == use-context && "$kubectl_status" -eq 0 ]]; then
       unset KUBE_NAMESPACE
     fi
     __dotfiles_kubeconfig_sync_tmux
